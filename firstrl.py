@@ -302,7 +302,19 @@ def place_objects(room):
                     blocks=True, fighter=fighter_component, ai=ai_component)
  
             objects.append(monster)
- 
+
+def get_names_under_mouse():
+	global mouse
+	
+	#return a string with the names of all the objects under the mouse
+	(x, y) = (mouse.cx, mouse.cy)
+	
+	#create a list with the names of all objects at the mluse's coordinates and in FOV
+	names = [obj.name for obj in objects
+		if obj.x == x and obj.y == y and libtcod.map_is_in_fov(fov_map, obj.x, obj.y)]
+		
+	names = ', '.join(names) #join the names, seperated by commas
+	return names.capitalize()
  
 def render_all():
     global fov_map, color_dark_wall, color_light_wall
@@ -349,7 +361,7 @@ def render_all():
     libtcod.console_set_default_background(panel, libtcod.black)
     libtcod.console_clear(panel)
     
-    #print he game messages, one line at a time
+    #print the game messages, one line at a time
     y = 1
     for (line, color) in game_msgs:
 		libtcod.console_set_default_foreground(panel, color)
@@ -358,6 +370,10 @@ def render_all():
     
     #show the player's stats
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp, libtcod.light_red, libtcod.darker_red)
+    
+    #display names of objects under the mouse
+    libtcod.console_set_default_foreground(panel, libtcod.light_gray)
+    libtcod.console_print_ex(panel, 1, 0, libtcod.BKGND_NONE, libtcod.LEFT, get_names_under_mouse())
     
     #blit the contents of "panel" to the root console
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
@@ -383,11 +399,10 @@ def player_move_or_attack(dx, dy):
     else:
         player.move(dx, dy)
         fov_recompute = True
- 
+
  
 def handle_keys():
-    #key = libtcod.console_check_for_keypress()  #real-time
-    key = libtcod.console_wait_for_keypress(True)  #turn-based
+    global key 
  
     if key.vk == libtcod.KEY_ENTER and key.lalt:
         #Alt+Enter: toggle fullscreen
@@ -398,16 +413,16 @@ def handle_keys():
  
     if game_state == 'playing':
         #movement keys
-        if libtcod.console_is_key_pressed(libtcod.KEY_UP):
+        if key.vk == libtcod.KEY_UP:
             player_move_or_attack(0, -1)
  
-        elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
+        elif key.vk == libtcod.KEY_DOWN:
             player_move_or_attack(0, 1)
  
-        elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
+        elif key.vk == libtcod.KEY_LEFT:
             player_move_or_attack(-1, 0)
  
-        elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
+        elif key.vk == libtcod.KEY_RIGHT:
             player_move_or_attack(1, 0)
         else:
             return 'didnt-take-turn'
@@ -498,10 +513,14 @@ game_msgs = []
 
 #a warm welcoming message!
 message('Welcome stranger! Prepare to perish in the Tombs of the Ancient Kings.', libtcod.red)
+
+mouse = libtcod.Mouse()
+key = libtcod.Key()
  
 while not libtcod.console_is_window_closed():
  
     #render the screen
+    libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,key,mouse)
     render_all()
  
     libtcod.console_flush()
